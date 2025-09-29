@@ -1,11 +1,23 @@
 import { useRef, useState, useEffect } from "react";
 
-function CalendarInput() {
+function CalendarInput({
+                           minDate,
+                           maxDate,
+                           defaultDate = null,
+                           selectedDate: controlledDate,      // external Date
+                           setSelectedDate: setControlledDate, // external setter
+                       }) {
     const inputRef = useRef(null);
     const calendarRef = useRef(null);
-    const [selectedDate, setSelectedDate] = useState(null);
+
+    // 🔹 Internal display state
+    const [internalDate, setInternalDate] = useState(
+        controlledDate || defaultDate || null
+    );
     const [calendarIsOpen, setCalendarIsOpen] = useState(false);
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [currentMonth, setCurrentMonth] = useState(
+        internalDate ? new Date(internalDate) : new Date()
+    );
     const [showMonthList, setShowMonthList] = useState(false);
 
     const daysOfWeek = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -28,19 +40,21 @@ function CalendarInput() {
         days.push(new Date(year, month, d));
     }
 
-    const handleDayClick = (day) => {
-        setSelectedDate(day.toISOString().split("T")[0]); // e.g. "2025-09-29"
+    const updateDate = (day) => {
+        setInternalDate(day); // update UI
+        if (setControlledDate) setControlledDate(day); // push outside if provided
         setCalendarIsOpen(false);
     };
 
-    const goPrevMonth = () => {
-        setCurrentMonth(new Date(year, month - 1, 1));
+    const handleDayClick = (day) => {
+        const isoDate = day.toISOString().split("T")[0];
+        if (minDate && isoDate < minDate) return;
+        if (maxDate && isoDate > maxDate) return;
+        updateDate(day);
     };
 
-    const goNextMonth = () => {
-        setCurrentMonth(new Date(year, month + 1, 1));
-    };
-
+    const goPrevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+    const goNextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
     const handleMonthSelect = (m) => {
         setCurrentMonth(new Date(year, m, 1));
         setShowMonthList(false);
@@ -52,7 +66,7 @@ function CalendarInput() {
         weeks.push(days.slice(i, i + 7));
     }
 
-    // 🔑 Close calendar if clicked outside
+    // Close calendar if clicked outside
     useEffect(() => {
         function handleClickOutside(event) {
             if (
@@ -65,21 +79,27 @@ function CalendarInput() {
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    // Sync when controlledDate changes from outside
+    useEffect(() => {
+        if (controlledDate) {
+            setInternalDate(controlledDate);
+            setCurrentMonth(new Date(controlledDate));
+        }
+    }, [controlledDate]);
 
     return (
         <div className="flex flex-col gap-5 text-white">
-            <div className="relative w-1/3 m-auto">
+            <div className="relative w-full">
                 <input
                     ref={inputRef}
                     type="text"
                     className="w-full peer outline-none border border-gray-600 focus:border-gray-400 transition-colors hover:cursor-pointer rounded py-2 px-4"
                     value={
-                        selectedDate
-                            ? new Date(selectedDate).toLocaleDateString("en-GB", {
+                        internalDate
+                            ? new Date(internalDate).toLocaleDateString("en-GB", {
                                 day: "2-digit",
                                 month: "2-digit",
                                 year: "numeric",
@@ -124,9 +144,7 @@ function CalendarInput() {
                                     month: "long",
                                 })} ${year}`}
                             {showMonthList && (
-                                <span className="py-2 px-4 hover:bg-gray-600 select-none hover:cursor-pointer transition-colors rounded">
-                                    Close
-                                </span>
+                                <span className="py-2 px-4">Close</span>
                             )}
                         </span>
                         {!showMonthList && (
@@ -168,7 +186,7 @@ function CalendarInput() {
                                 ))}
                             </div>
 
-                            {/* Days as weeks */}
+                            {/* Days */}
                             <div className="flex flex-col divide-y divide-gray-600">
                                 {weeks.map((week, wIdx) => (
                                     <div
@@ -179,11 +197,23 @@ function CalendarInput() {
                                             day ? (
                                                 <div
                                                     key={dIdx}
-                                                    className={`py-1 hover:bg-gray-600 rounded cursor-pointer
-                                                                ${selectedDate === day.toISOString().split("T")[0]
-                                                                                                                ? "bg-blue-500 text-white"
-                                                                                                                : ""}
-                                                                ${dIdx === 5 || dIdx === 6 ? "text-red-500" : ""}`}
+                                                    className={`py-1 rounded cursor-pointer
+                                                        ${
+                                                        internalDate &&
+                                                        new Date(internalDate).toDateString() ===
+                                                        day.toDateString()
+                                                            ? "bg-blue-500 text-white"
+                                                            : "hover:bg-gray-600"
+                                                    }
+                                                        ${dIdx === 5 || dIdx === 6 ? "text-red-500" : ""}
+                                                        ${
+                                                        (minDate &&
+                                                            day.toISOString().split("T")[0] < minDate) ||
+                                                        (maxDate &&
+                                                            day.toISOString().split("T")[0] > maxDate)
+                                                            ? "opacity-40 cursor-not-allowed hover:bg-transparent"
+                                                            : ""
+                                                    }`}
                                                     onClick={() => handleDayClick(day)}
                                                 >
                                                     {day.getDate()}
@@ -199,15 +229,38 @@ function CalendarInput() {
                     )}
 
                     <div className="flex flex-row items-center justify-center gap-5">
-                        <button disabled={selectedDate === new Date().toISOString().split("T")[0]} onClick={() => {
-                            setSelectedDate(new Date().toISOString().split("T")[0]);
-                            setCalendarIsOpen(false);
-                        }} type="button" className={`${selectedDate === new Date().toISOString().split("T")[0] ? 'bg-gray-600' : ''} disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600`}>
-                            <span className="material-icons active:scale-95 text-gray-400 !text-lg">today</span>
+                        <button
+                            disabled={
+                                internalDate &&
+                                new Date(internalDate).toDateString() ===
+                                new Date().toDateString()
+                            }
+                            onClick={() => {
+                                const today = new Date();
+                                const iso = today.toISOString().split("T")[0];
+                                if (minDate && iso < minDate) return;
+                                if (maxDate && iso > maxDate) return;
+                                updateDate(today);
+                            }}
+                            type="button"
+                            className={`${
+                                internalDate &&
+                                new Date(internalDate).toDateString() ===
+                                new Date().toDateString()
+                                    ? "bg-gray-600"
+                                    : ""
+                            } disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600`}
+                        >
+                            <span className="material-icons !text-lg">today</span>
                             Today
                         </button>
-                        <button onClick={() => setSelectedDate(null)} disabled={!selectedDate} type="button" className="disabled:bg-gray-600 disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600">
-                            <span className="material-icons active:scale-95 text-gray-400 !text-lg">delete</span>
+                        <button
+                            onClick={() => updateDate(null)}
+                            disabled={!internalDate}
+                            type="button"
+                            className="disabled:bg-gray-600 disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600"
+                        >
+                            <span className="material-icons !text-lg">delete</span>
                             Delete
                         </button>
                     </div>
