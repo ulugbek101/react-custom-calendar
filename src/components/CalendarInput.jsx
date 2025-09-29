@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 function CalendarInput() {
     const inputRef = useRef(null);
+    const calendarRef = useRef(null);
     const [selectedDate, setSelectedDate] = useState(null);
     const [calendarIsOpen, setCalendarIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -19,8 +20,7 @@ function CalendarInput() {
 
     // Create array of days for rendering
     const days = [];
-    // Adjust so week starts on Monday (JS getDay() → 0=Sunday)
-    let startIndex = (firstDay.getDay() + 6) % 7;
+    let startIndex = (firstDay.getDay() + 6) % 7; // Monday start
     for (let i = 0; i < startIndex; i++) {
         days.push(null);
     }
@@ -29,11 +29,7 @@ function CalendarInput() {
     }
 
     const handleDayClick = (day) => {
-        setSelectedDate(day.toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        }));
+        setSelectedDate(day.toISOString().split("T")[0]); // e.g. "2025-09-29"
         setCalendarIsOpen(false);
     };
 
@@ -56,14 +52,40 @@ function CalendarInput() {
         weeks.push(days.slice(i, i + 7));
     }
 
+    // 🔑 Close calendar if clicked outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (
+                inputRef.current &&
+                !inputRef.current.contains(event.target) &&
+                calendarRef.current &&
+                !calendarRef.current.contains(event.target)
+            ) {
+                setCalendarIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
     return (
         <div className="flex flex-col gap-5 text-white">
             <div className="relative w-1/3 m-auto">
                 <input
                     ref={inputRef}
-                    className="w-full peer outline-none border border-gray-600 focus:border-gray-400 transition-colors hover:cursor-pointer rounded py-2 px-4"
                     type="text"
-                    value={selectedDate || ""}
+                    className="w-full peer outline-none border border-gray-600 focus:border-gray-400 transition-colors hover:cursor-pointer rounded py-2 px-4"
+                    value={
+                        selectedDate
+                            ? new Date(selectedDate).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                            })
+                            : ""
+                    }
                     onClick={() => setCalendarIsOpen(!calendarIsOpen)}
                     readOnly
                 />
@@ -79,7 +101,10 @@ function CalendarInput() {
             </div>
 
             {calendarIsOpen && (
-                <div className="w-1/3 m-auto rounded border border-gray-400 px-4 py-2 flex flex-col gap-2 bg-gray-800">
+                <div
+                    ref={calendarRef}
+                    className="w-1/3 m-auto rounded border border-gray-400 px-4 py-2 flex flex-col gap-2 bg-gray-800"
+                >
                     {/* Header */}
                     <div className="flex flex-row items-center justify-center mb-2">
                         {!showMonthList && (
@@ -154,12 +179,11 @@ function CalendarInput() {
                                             day ? (
                                                 <div
                                                     key={dIdx}
-                                                    className={`py-1 hover:bg-gray-600 rounded cursor-pointer ${
-                                                        selectedDate ===
-                                                        day.toLocaleDateString()
-                                                            ? "bg-blue-500 text-white"
-                                                            : ""
-                                                    } ${dIdx === 5 || dIdx === 6 ? "text-red-500" : ""}`}
+                                                    className={`py-1 hover:bg-gray-600 rounded cursor-pointer
+                                                                ${selectedDate === day.toISOString().split("T")[0]
+                                                                                                                ? "bg-blue-500 text-white"
+                                                                                                                : ""}
+                                                                ${dIdx === 5 || dIdx === 6 ? "text-red-500" : ""}`}
                                                     onClick={() => handleDayClick(day)}
                                                 >
                                                     {day.getDate()}
@@ -173,6 +197,20 @@ function CalendarInput() {
                             </div>
                         </>
                     )}
+
+                    <div className="flex flex-row items-center justify-center gap-5">
+                        <button disabled={selectedDate === new Date().toISOString().split("T")[0]} onClick={() => {
+                            setSelectedDate(new Date().toISOString().split("T")[0]);
+                            setCalendarIsOpen(false);
+                        }} type="button" className={`${selectedDate === new Date().toISOString().split("T")[0] ? 'bg-gray-600' : ''} disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600`}>
+                            <span className="material-icons active:scale-95 text-gray-400 !text-lg">today</span>
+                            Today
+                        </button>
+                        <button onClick={() => setSelectedDate(null)} disabled={!selectedDate} type="button" className="disabled:bg-gray-600 disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600">
+                            <span className="material-icons active:scale-95 text-gray-400 !text-lg">delete</span>
+                            Delete
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
