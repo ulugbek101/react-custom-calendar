@@ -1,3 +1,8 @@
+## You need to connect Material (Google) Icons' CDN link to make it work (to display icon)
+```
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+```
+
 ## Demo
 
 <div align="center">
