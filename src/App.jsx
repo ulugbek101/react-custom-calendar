@@ -4,13 +4,9 @@ import { useState } from "react";
 
 function App() {
     const [date, setDate] = useState(null);
-
-    // helper: format date in local timezone like ISO (yyyy-mm-ddTHH:mm:ss)
-    const toLocalISOString = (d) => {
-        const offset = d.getTimezoneOffset();
-        const localDate = new Date(d.getTime() - offset * 60000);
-        return localDate.toISOString().slice(0, 19); // cut off milliseconds + Z
-    };
+    // date - returns as a string, so you can split it by T to omit a timezone
+    // raw date value - 2025-09-30T00:00:00
+    // splitted date value - 2025-09-30
 
     return (
         <div>
@@ -23,7 +19,7 @@ function App() {
 
             <p className="text-white font-semibold text-3xl my-5">
                 Picked:{" "}
-                {date ? toLocalISOString(date).split("T")[0] : "No date selected"} (
+                {date ? date.split("T")[0] : "No date selected"} (
                 {Intl.DateTimeFormat().resolvedOptions().timeZone})
             </p>
         </div>

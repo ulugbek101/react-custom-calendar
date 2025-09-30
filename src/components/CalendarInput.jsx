@@ -10,9 +10,17 @@ function CalendarInput({
     const inputRef = useRef(null);
     const calendarRef = useRef(null);
 
-    // 🔹 Internal display state
+    // 🔹 Convert Date → Local ISO string (without Z, respecting timezone)
+    const toLocalISOString = (d) => {
+        if (!d) return null;
+        const offset = d.getTimezoneOffset();
+        const localDate = new Date(d.getTime() - offset * 60000);
+        return localDate.toISOString().slice(0, 19); // yyyy-mm-ddTHH:mm:ss
+    };
+
+    // 🔹 Internal state
     const [internalDate, setInternalDate] = useState(
-        controlledDate || defaultDate || null
+        controlledDate ? new Date(controlledDate) : defaultDate ? new Date(defaultDate) : null
     );
     const [calendarIsOpen, setCalendarIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(
@@ -30,19 +38,17 @@ function CalendarInput({
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    // Create array of days for rendering
+    // Create array of days
     const days = [];
     let startIndex = (firstDay.getDay() + 6) % 7; // Monday start
-    for (let i = 0; i < startIndex; i++) {
-        days.push(null);
-    }
+    for (let i = 0; i < startIndex; i++) days.push(null);
     for (let d = 1; d <= lastDay.getDate(); d++) {
         days.push(new Date(year, month, d));
     }
 
     const updateDate = (day) => {
-        setInternalDate(day); // update UI
-        if (setControlledDate) setControlledDate(day); // push outside if provided
+        setInternalDate(day);
+        if (setControlledDate) setControlledDate(day ? toLocalISOString(day) : null);
         setCalendarIsOpen(false);
     };
 
@@ -60,13 +66,13 @@ function CalendarInput({
         setShowMonthList(false);
     };
 
-    // Split days into weeks
+    // Split into weeks
     const weeks = [];
     for (let i = 0; i < days.length; i += 7) {
         weeks.push(days.slice(i, i + 7));
     }
 
-    // Close calendar if clicked outside
+    // Close on outside click
     useEffect(() => {
         function handleClickOutside(event) {
             if (
@@ -82,10 +88,10 @@ function CalendarInput({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Sync when controlledDate changes from outside
+    // Sync with controlledDate
     useEffect(() => {
         if (controlledDate) {
-            setInternalDate(controlledDate);
+            setInternalDate(new Date(controlledDate));
             setCurrentMonth(new Date(controlledDate));
         }
     }, [controlledDate]);
