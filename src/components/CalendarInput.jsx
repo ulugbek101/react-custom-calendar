@@ -1,76 +1,72 @@
-import { useRef, useState, useEffect } from "react";
+import {useEffect, useRef, useState} from "react";
+import Days from "./Days.jsx";
+
+// Local formatter -> always YYYY-MM-DD in local timezone
+const formatLocalDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+};
 
 function CalendarInput({
                            minDate,
                            maxDate,
                            defaultDate = null,
-                           selectedDate: controlledDate,      // external Date
+                           selectedDate: controlledDate,       // external Date
                            setSelectedDate: setControlledDate, // external setter
                        }) {
     const inputRef = useRef(null);
     const calendarRef = useRef(null);
 
-    // 🔹 Convert Date → Local ISO string (without Z, respecting timezone)
-    const toLocalISOString = (d) => {
-        if (!d) return null;
-        const offset = d.getTimezoneOffset();
-        const localDate = new Date(d.getTime() - offset * 60000);
-        return localDate.toISOString().slice(0, 19); // yyyy-mm-ddTHH:mm:ss
-    };
-
-    // 🔹 Internal state
+    // Internal state
     const [internalDate, setInternalDate] = useState(
-        controlledDate ? new Date(controlledDate) : defaultDate ? new Date(defaultDate) : null
+        controlledDate
+            ? new Date(controlledDate)
+            : defaultDate
+                ? new Date(defaultDate)
+                : null
     );
     const [calendarIsOpen, setCalendarIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(
         internalDate ? new Date(internalDate) : new Date()
     );
     const [showMonthList, setShowMonthList] = useState(false);
-
-    const daysOfWeek = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-    const months = Array.from({ length: 12 }, (_, i) =>
-        new Date(0, i).toLocaleString("default", { month: "long" })
-    );
+    const [showYearList, setShowYearList] = useState(false);
 
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
 
-    // Create array of days
-    const days = [];
-    let startIndex = (firstDay.getDay() + 6) % 7; // Monday start
-    for (let i = 0; i < startIndex; i++) days.push(null);
-    for (let d = 1; d <= lastDay.getDate(); d++) {
-        days.push(new Date(year, month, d));
-    }
+    const months = Array.from({length: 12}, (_, i) =>
+        new Date(0, i).toLocaleString("default", {month: "long"})
+    );
+    const years = Array.from({length: 11}, (_, i) => year - 5 + i);
 
     const updateDate = (day) => {
         setInternalDate(day);
-        if (setControlledDate) setControlledDate(day ? toLocalISOString(day) : null);
+        if (setControlledDate) setControlledDate(day); // keep Date object, not string
         setCalendarIsOpen(false);
     };
 
     const handleDayClick = (day) => {
-        const isoDate = day.toISOString().split("T")[0];
-        if (minDate && isoDate < minDate) return;
-        if (maxDate && isoDate > maxDate) return;
+        const localDate = formatLocalDate(day);
+        if (minDate && localDate < minDate) return;
+        if (maxDate && localDate > maxDate) return;
         updateDate(day);
     };
 
-    const goPrevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
-    const goNextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
     const handleMonthSelect = (m) => {
         setCurrentMonth(new Date(year, m, 1));
         setShowMonthList(false);
     };
 
-    // Split into weeks
-    const weeks = [];
-    for (let i = 0; i < days.length; i += 7) {
-        weeks.push(days.slice(i, i + 7));
-    }
+    const handleYearSelect = (y) => {
+        setCurrentMonth(new Date(y, month, 1));
+        setShowYearList(false);
+    };
+
+    const goPrevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+    const goNextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
 
     // Close on outside click
     useEffect(() => {
@@ -84,6 +80,7 @@ function CalendarInput({
                 setCalendarIsOpen(false);
             }
         }
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
@@ -122,8 +119,8 @@ function CalendarInput({
                     }}
                     className="material-icons hover:cursor-pointer select-none text-gray-600 peer-focus:text-gray-400 transition-colors absolute top-1/2 right-4 -translate-y-1/2"
                 >
-                    calendar_month
-                </span>
+          calendar_month
+        </span>
             </div>
 
             {calendarIsOpen && (
@@ -133,38 +130,63 @@ function CalendarInput({
                 >
                     {/* Header */}
                     <div className="flex flex-row items-center justify-center mb-2">
-                        {!showMonthList && (
+                        {!showMonthList && !showYearList && (
                             <span
                                 className="material-icons hover:cursor-pointer select-none me-auto rounded hover:bg-gray-600 p-2"
                                 onClick={goPrevMonth}
                             >
-                                chevron_left
-                            </span>
+                chevron_left
+              </span>
                         )}
+
+                        {/* Month toggle */}
                         <span
                             className="py-2 px-4 hover:bg-gray-600 select-none hover:cursor-pointer transition-colors rounded"
-                            onClick={() => setShowMonthList((prev) => !prev)}
+                            onClick={() => {
+                                setShowMonthList((prev) => !prev);
+                                setShowYearList(false);
+                            }}
                         >
-                            {!showMonthList &&
-                                `${currentMonth.toLocaleString("default", {
-                                    month: "long",
-                                })} ${year}`}
-                            {showMonthList && (
-                                <span className="py-2 px-4">Close</span>
-                            )}
-                        </span>
-                        {!showMonthList && (
+              {showMonthList ? "Close" : currentMonth.toLocaleString("default", {month: "long"})}
+            </span>
+
+                        {/* Year toggle */}
+                        <span
+                            className="py-2 px-4 hover:bg-gray-600 select-none hover:cursor-pointer transition-colors rounded"
+                            onClick={() => {
+                                setShowYearList((prev) => !prev);
+                                setShowMonthList(false);
+                            }}
+                        >
+              {showYearList ? "Close" : year}
+            </span>
+
+                        {!showMonthList && !showYearList && (
                             <span
                                 className="material-icons hover:cursor-pointer select-none ms-auto rounded hover:bg-gray-600 p-2"
                                 onClick={goNextMonth}
                             >
-                                chevron_right
-                            </span>
+                chevron_right
+              </span>
                         )}
                     </div>
 
-                    {/* Month list */}
-                    {showMonthList ? (
+                    {/* Content */}
+                    {showYearList ? (
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                            {years.map((y) => (
+                                <div
+                                    key={y}
+                                    className={`py-2 hover:bg-gray-600 rounded-lg cursor-pointer ${
+                                        y === year ? "bg-blue-500 text-white" : ""
+                                    }`}
+                                    onClick={() => handleYearSelect(y)}
+                                >
+                                    {y}
+                                </div>
+                            ))}
+                        </div>
+                    ) : showMonthList ? (
                         <div className="grid grid-cols-3 gap-2 text-center">
                             {months.map((m, i) => (
                                 <div
@@ -177,82 +199,34 @@ function CalendarInput({
                             ))}
                         </div>
                     ) : (
-                        <>
-                            {/* Days of week */}
-                            <div className="grid grid-cols-7 text-center font-semibold">
-                                {daysOfWeek.map((day) => (
-                                    <div
-                                        key={day}
-                                        className={`${
-                                            day === "Sa" || day === "Su" ? "text-red-500" : ""
-                                        }`}
-                                    >
-                                        {day}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Days */}
-                            <div className="flex flex-col divide-y divide-gray-600">
-                                {weeks.map((week, wIdx) => (
-                                    <div
-                                        key={wIdx}
-                                        className="grid grid-cols-7 gap-1 text-center py-1"
-                                    >
-                                        {week.map((day, dIdx) =>
-                                            day ? (
-                                                <div
-                                                    key={dIdx}
-                                                    className={`py-1 rounded cursor-pointer
-                                                        ${
-                                                        internalDate &&
-                                                        new Date(internalDate).toDateString() ===
-                                                        day.toDateString()
-                                                            ? "bg-blue-500 text-white"
-                                                            : "hover:bg-gray-600"
-                                                    }
-                                                        ${dIdx === 5 || dIdx === 6 ? "text-red-500" : ""}
-                                                        ${
-                                                        (minDate &&
-                                                            day.toISOString().split("T")[0] < minDate) ||
-                                                        (maxDate &&
-                                                            day.toISOString().split("T")[0] > maxDate)
-                                                            ? "opacity-40 cursor-not-allowed hover:bg-transparent"
-                                                            : ""
-                                                    }`}
-                                                    onClick={() => handleDayClick(day)}
-                                                >
-                                                    {day.getDate()}
-                                                </div>
-                                            ) : (
-                                                <div key={dIdx}></div>
-                                            )
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </>
+                        <Days
+                            internalDate={internalDate}
+                            handleDayClick={handleDayClick}
+                            year={year}
+                            month={month}
+                            minDate={minDate}
+                            maxDate={maxDate}
+                        />
                     )}
 
-                    <div className="flex flex-row items-center justify-center gap-5">
+                    {/* Footer buttons */}
+                    <div className="flex flex-row items-center justify-center gap-5 mt-2">
                         <button
                             disabled={
                                 internalDate &&
-                                new Date(internalDate).toDateString() ===
-                                new Date().toDateString()
+                                new Date(internalDate).toDateString() === new Date().toDateString()
                             }
                             onClick={() => {
                                 const today = new Date();
-                                const iso = today.toISOString().split("T")[0];
-                                if (minDate && iso < minDate) return;
-                                if (maxDate && iso > maxDate) return;
+                                const localToday = formatLocalDate(today);
+                                if (minDate && localToday < minDate) return;
+                                if (maxDate && localToday > maxDate) return;
                                 updateDate(today);
                             }}
                             type="button"
                             className={`${
                                 internalDate &&
-                                new Date(internalDate).toDateString() ===
-                                new Date().toDateString()
+                                new Date(internalDate).toDateString() === new Date().toDateString()
                                     ? "bg-gray-600"
                                     : ""
                             } disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600`}

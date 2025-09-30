@@ -19,7 +19,7 @@ function App() {
 
             <p className="text-white font-semibold text-3xl my-5">
                 Picked:{" "}
-                {date ? date.split("T")[0] : "No date selected"} (
+                {date ? date.toISOString().split("T")[0] : "No date selected"} (
                 {Intl.DateTimeFormat().resolvedOptions().timeZone})
             </p>
         </div>
