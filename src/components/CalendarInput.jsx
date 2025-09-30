@@ -1,5 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import Days from "./Days.jsx";
+import {monthsTranslations, words} from "./constants.jsx";
+
 
 // Local formatter -> always YYYY-MM-DD in local timezone
 const formatLocalDate = (date) => {
@@ -15,6 +17,7 @@ function CalendarInput({
                            defaultDate = null,
                            selectedDate: controlledDate,       // external Date
                            setSelectedDate: setControlledDate, // external setter
+                           lang = "en",
                        }) {
     const inputRef = useRef(null);
     const calendarRef = useRef(null);
@@ -37,10 +40,8 @@ function CalendarInput({
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
 
-    const months = Array.from({length: 12}, (_, i) =>
-        new Date(0, i).toLocaleString("default", {month: "long"})
-    );
-    const years = Array.from({length: 11}, (_, i) => year - 5 + i);
+    const months = Array.from({length: 12}, (_, i) => new Date(0, i).toLocaleString("default", {month: "long"}) );
+    const years = Array.from({length: 9}, (_, i) => year - 3 + i);
 
     const updateDate = (day) => {
         setInternalDate(day);
@@ -147,7 +148,7 @@ function CalendarInput({
                                 setShowYearList(false);
                             }}
                         >
-              {showMonthList ? "Close" : currentMonth.toLocaleString("default", {month: "long"})}
+              {showMonthList ? words[lang]["close"] : monthsTranslations[lang][currentMonth.toLocaleString("default", {month: "long"})]}
             </span>
 
                         {/* Year toggle */}
@@ -158,7 +159,7 @@ function CalendarInput({
                                 setShowMonthList(false);
                             }}
                         >
-              {showYearList ? "Close" : year}
+              {showYearList ? words[lang]["close"] : year}
             </span>
 
                         {!showMonthList && !showYearList && (
@@ -173,7 +174,7 @@ function CalendarInput({
 
                     {/* Content */}
                     {showYearList ? (
-                        <div className="grid grid-cols-4 gap-2 text-center">
+                        <div className="grid grid-cols-3 gap-2 text-center">
                             {years.map((y) => (
                                 <div
                                     key={y}
@@ -194,7 +195,7 @@ function CalendarInput({
                                     className="py-2 hover:bg-gray-600 rounded-lg cursor-pointer"
                                     onClick={() => handleMonthSelect(i)}
                                 >
-                                    {m}
+                                    {monthsTranslations[lang][m]}
                                 </div>
                             ))}
                         </div>
@@ -206,6 +207,7 @@ function CalendarInput({
                             month={month}
                             minDate={minDate}
                             maxDate={maxDate}
+                            lang={lang}
                         />
                     )}
 
@@ -232,7 +234,7 @@ function CalendarInput({
                             } disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600`}
                         >
                             <span className="material-icons !text-lg">today</span>
-                            Today
+                            {words[lang]["today"]}
                         </button>
                         <button
                             onClick={() => updateDate(null)}
@@ -241,7 +243,7 @@ function CalendarInput({
                             className="disabled:bg-gray-600 disabled:hover:cursor-not-allowed border text-sm text-gray-400 border-gray-600 flex flex-row gap-1 items-center justify-center rounded px-2 py-1 transition hover:cursor-pointer hover:bg-gray-600"
                         >
                             <span className="material-icons !text-lg">delete</span>
-                            Delete
+                            {words[lang]["delete"]}
                         </button>
                     </div>
                 </div>

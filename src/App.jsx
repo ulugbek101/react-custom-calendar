@@ -15,6 +15,7 @@ function App() {
                 maxDate="2025-12-31"
                 selectedDate={date}
                 setSelectedDate={setDate}
+                lang="uz"
             />
 
             <p className="text-white font-semibold text-3xl my-5">

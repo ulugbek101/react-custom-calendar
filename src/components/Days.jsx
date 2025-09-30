@@ -1,5 +1,9 @@
-function Days({internalDate, handleDayClick, year, month, minDate, maxDate}) {
-    const daysOfWeek = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+import {weekdays} from "./constants.jsx";
+import {useEffect} from "react";
+
+
+function Days({internalDate, handleDayClick, year, month, minDate, maxDate, lang = "en"}) {
+    const daysOfWeek = weekdays[lang];
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
@@ -32,7 +36,7 @@ function Days({internalDate, handleDayClick, year, month, minDate, maxDate}) {
                 {daysOfWeek.map((day) => (
                     <div
                         key={day}
-                        className={day === "Sa" || day === "Su" ? "text-red-500" : ""}
+                        className={day === weekdays[lang][5] ? "text-orange-300" : day === weekdays[lang][6] ? "text-red-500" : ""}
                     >
                         {day}
                     </div>
@@ -65,7 +69,7 @@ function Days({internalDate, handleDayClick, year, month, minDate, maxDate}) {
                                     onClick={() => !isDisabled && handleDayClick(day)}
                                     className={`py-1 rounded
                                         ${isSelected ? "bg-blue-500 text-white" : "hover:bg-gray-600"}
-                                        ${dIdx === 5 || dIdx === 6 ? "text-red-500" : ""}
+                                        ${dIdx === 5 ? "text-orange-300" : dIdx === 6 ? "text-red-500" : ""}
                                         ${
                                         isDisabled
                                             ? "opacity-40 cursor-not-allowed hover:bg-transparent"
